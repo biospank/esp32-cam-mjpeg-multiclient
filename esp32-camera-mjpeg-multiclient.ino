@@ -28,6 +28,7 @@
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WiFiClient.h>
+#include <DNSServer.h>
 
 #include <esp_bt.h>
 #include <esp_wifi.h>
@@ -36,12 +37,16 @@
 
 // Select camera model
 //#define CAMERA_MODEL_WROVER_KIT
-#define CAMERA_MODEL_ESP_EYE
+//#define CAMERA_MODEL_ESP_EYE
 //#define CAMERA_MODEL_M5STACK_PSRAM
 //#define CAMERA_MODEL_M5STACK_WIDE
-//#define CAMERA_MODEL_AI_THINKER
+#define CAMERA_MODEL_AI_THINKER
 
 #include "camera_pins.h"
+
+const byte DNS_PORT = 53;
+
+DNSServer dnsServer;
 
 /*
   Next one is an include with wifi credentials.
@@ -55,7 +60,7 @@
 
   Should work then
 */
-#include "home_wifi_multi.h"
+//#include "home_wifi_multi.h"
 
 OV2640 cam;
 
@@ -436,21 +441,35 @@ void setup()
   //  Configure and connect to WiFi
   IPAddress ip;
 
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(SSID1, PWD1);
-  Serial.print("Connecting to WiFi");
-  while (WiFi.status() != WL_CONNECTED)
-  {
-    delay(500);
-    Serial.print(F("."));
-  }
-  ip = WiFi.localIP();
+  // WiFi.mode(WIFI_STA);
+  // WiFi.begin(SSID1, PWD1);
+  // Serial.print("Connecting to WiFi");
+  // while (WiFi.status() != WL_CONNECTED)
+  // {
+  //   delay(500);
+  //   Serial.print(F("."));
+  // }
+
+  Serial.print("Configuring access point...");
+
+  /* You can remove the password parameter if you want the AP to be open. */
+  WiFi.softAP("ESP32-CAM");
+
+  ip = WiFi.softAPIP();
+
+  // ip = WiFi.localIP();
   Serial.println(F("WiFi connected"));
   Serial.println("");
   Serial.print("Stream Link: http://");
   Serial.print(ip);
   Serial.println("/mjpeg/1");
 
+  // modify TTL associated  with the domain name (in seconds)
+  // default is 60 seconds
+  dnsServer.setTTL(300);
+
+  // start DNS server for a specific domain name
+  dnsServer.start(DNS_PORT, "*", ip);
 
   // Start mainstreaming RTOS task
   xTaskCreatePinnedToCore(
